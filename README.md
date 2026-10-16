@@ -1,35 +1,69 @@
 # audience-analysis
 
-Agent component of the LINKGEN content-intelligence and publishing system.
+Strategy-phase agent of the **LinkGen** content-intelligence and publishing
+system.
 
 ## Purpose
-Agent repository: a specialist content-intelligence agent contributing to the audience-analysis stage.
 
-## Ownership
-Owns its implementation, local tests, local documentation, and local version
-history. Does NOT own composition, orchestration, global configuration, or
-system-wide contracts (those belong to the parent repository).
+The specialist agent responsible for modeling the target audience: it
+consumes the research phase outputs (`ResearchRequest` plus optional
+`CreatorProfile[]` / `MarketSignal[]`) and produces contract-conforming
+`AudienceProfile[]` segments — who they are, their needs, interests, and
+preferred formats.
 
-## Status
-Foundation scaffold only. Production implementation has NOT begun.
+Design highlights (see `AGENTS.md` in the parent for the master rules):
 
-## Architectural role
-Independently versioned repository composed by the parent. It must depend only
-on explicit shared contracts/interfaces (to be established in Phase 01), never
-on parent or sibling implementation code.
+- **Deterministic by construction** — ids are derived with uuid5
+  (`agent_framework.ids.deterministic_id`), time comes from the injected
+  context clock, and outputs are pure functions of the input.
+- **LLM output is untrusted** — model JSON arrives router-validated and is
+  sanitized field-by-field (including the free-form `demographics` mapping,
+  which is bounded to clean string keys/values); segments without a
+  name/description are dropped, duplicates deduped by normalized name, and
+  the segment list is capped.
+- **Focus-derived baseline** — when the model yields no usable segment, the
+  agent emits one profile derived from the request focus itself, so the
+  strategy phase never receives an empty audience list.
+- **Mock-first ($0 development)** — the default provider is the offline
+  deterministic `MockLLMProvider` via the `ModelRouter`.
+- **No privileged tools** — no publishing/scheduling authority.
 
-## Dependency rules
-- MUST NOT import parent implementation or sibling child implementation.
-- No circular dependencies.
-- Keep provider-specific code behind provider abstractions.
+## Input / output contract
+
+Input (validated against research-phase contracts):
+
+```json
+{"request": {"request_id": "...", "run_id": "...", "focus": "..."},
+ "creators": [{...CreatorProfile...}],
+ "signals": [{...MarketSignal...}]}
+```
+
+`creators` and `signals` are optional; `request` is required.
+
+Output:
+
+```json
+{"audiences": [{...AudienceProfile...}]}
+```
+
+## Boundaries
+
+- Output contracts: `AudienceProfile`.
+- Forbidden tools: `publish`, `schedule`, `linkedin-post`.
+- Depends only on `linkgen_contracts`, `linkgen_config`, `agent-framework`,
+  and the `ModelRouter` interface from `providers/llm`.
 
 ## Testing
+
 Run local tests with:
 
     python -m pytest
 
-## Current phase
-Phase 00.5 — child repository bootstrap. No production functionality yet.
+## Status
+
+Phase 09 (strategy system) — implemented at 1.0.0.
 
 ## Publishing authority
-No publishing/scheduling authority; publishing privilege belongs to the publishing subsystem (publisher) only.
+
+No publishing/scheduling authority; publishing privilege belongs to the
+publishing subsystem (publisher) only.

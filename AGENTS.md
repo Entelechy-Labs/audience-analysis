@@ -4,7 +4,8 @@
 This repository owns its implementation, local tests, local documentation,
 local configuration defaults, and local version history.
 
-It is responsible for: a specialist content-intelligence agent contributing to the audience-analysis stage.
+It is responsible for: modeling the target audience as contract-conforming
+`AudienceProfile[]` artifacts from the completed research (Phase 09).
 
 ## Does NOT own
 - Composition, orchestration, global configuration, system-wide documentation
@@ -13,11 +14,27 @@ It is responsible for: a specialist content-intelligence agent contributing to t
 - Implementation of other child repositories.
 
 ## Dependency direction (allowed)
-Depends only on explicit shared contracts/interfaces (Phase 01+).
+Depends on explicit shared layers only:
+
+- `linkgen_contracts` (contract layer)
+- `linkgen_config` (settings/modes/cost policy)
+- `agent-framework` (AgentBase/AgentContext/AgentConfig — ADR-013 shared
+  framework for all agents)
+- `providers/llm` (ModelRouter only — agents never import provider internals
+  or adapters directly)
+
 MUST NOT import parent implementation code (e.g. linkgen.system, "../..", or
 any upward filesystem import).
-MUST NOT import sibling child implementation code.
+MUST NOT import sibling agent implementation code (e.g. agent_creator_research).
 No circular dependencies.
+
+## Determinism expectations
+- Ids derived deterministically (uuid5 via `agent_framework.ids`); never
+  `uuid4` in agent logic.
+- Time only via the injected context clock; never the system clock.
+- No network, randomness, or commercial SDK imports in source.
+- Model output is untrusted: sanitized field-by-field before it may enter a
+  contract model; segments without a name/description are dropped.
 
 ## Testing expectations
 - Run local unit tests with: python -m pytest
